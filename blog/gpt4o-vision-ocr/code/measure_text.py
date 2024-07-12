@@ -12,11 +12,11 @@ pbar = tqdm.tqdm(total=110, unit="request")
 
 for n in range(11):
     n *= 100
-    dir_name = os.path.join("result", "txt", str(n))
+    dir_name = os.path.join("..", "result", "txt", str(n))
     os.makedirs(dir_name, exist_ok=True)
     time_out = 60
     for i in range(10):
-        txt_path = os.path.join("txt", str(n), str(i) + ".txt")
+        txt_path = os.path.join("..", "data", "txt", str(n), str(i) + ".txt")
 
         with open(txt_path, "r") as file:
             text = file.read()

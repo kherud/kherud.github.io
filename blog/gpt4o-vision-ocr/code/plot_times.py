@@ -15,9 +15,9 @@ for dir_name, label, color in (("img", "Counting via Img", "tab:orange"), ("txt"
         amount *= 100
         durations.append([])
 
-        for result_path in os.listdir(os.path.join("result", dir_name, str(amount))):
+        for result_path in os.listdir(os.path.join("..", "result", dir_name, str(amount))):
 
-            with open(os.path.join("result", dir_name, str(amount), result_path), "r") as file:
+            with open(os.path.join("..", "result", dir_name, str(amount), result_path), "r") as file:
                 result = json.load(file)
 
             durations[-1].append(result["duration_ms"])

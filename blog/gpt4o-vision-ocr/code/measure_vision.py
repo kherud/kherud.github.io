@@ -19,12 +19,12 @@ pbar = tqdm.tqdm(total=110, unit="request")
 
 for n in range(11):
     n *= 100
-    dir_name = os.path.join("result", "img", str(n))
+    dir_name = os.path.join("..", "result", "img", str(n))
     os.makedirs(dir_name, exist_ok=True)
     time_out = 60
     for i in range(10):
         # Path to your image
-        image_path = os.path.join("img", str(n), str(i) + ".png")
+        image_path = os.path.join("..", "data", "img", str(n), str(i) + ".png")
 
         # Getting the base64 string
         base64_image = encode_image(image_path)

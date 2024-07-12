@@ -5,7 +5,7 @@ import nltk
 from PIL import Image, ImageDraw, ImageFont
 from nltk.corpus import words
 
-nltk.data.path.append('.')
+nltk.data.path.append('..')
 
 
 def generate_random_words(num_words):
@@ -81,8 +81,8 @@ text = generate_random_words(1000)
 font_size = 14
 
 for n in steps:
-    img_dir = os.path.join("data", "img", str(n))
-    txt_dir = os.path.join("data", "txt", str(n))
+    img_dir = os.path.join("..", "data", "img", str(n))
+    txt_dir = os.path.join("..", "data", "txt", str(n))
     os.makedirs(img_dir, exist_ok=True)
     os.makedirs(txt_dir, exist_ok=True)
     for i in range(samples_per_step):
