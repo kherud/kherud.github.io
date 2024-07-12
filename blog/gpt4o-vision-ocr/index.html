@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Does GPT4o use OCR for vision?</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            --color: #434343;
+            --background: #fff;
+            max-width: 65ch;
+            margin: auto;
+            font: 18px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            background: var(--background);
+            color: var(--color);
+        }
+
+        @media (prefers-color-scheme: dark) {
+          body {
+            --color: #d9d9e3;
+            --background: #202123;
+          }
+
+          #plot {
+            filter: invert(100%);
+          }
+        }
+
+        a {
+            color: #4493f8;
+        }
+
+        cite {
+            text-align: right;
+            display: block;
+        }
+
+        pre {
+            white-space: pre-wrap;
+        }
+
+        table {
+            margin: 0 auto;
+            text-align: right;
+            border-collapse: collapse;
+        }
+
+        th {
+            border-bottom: 2px solid var(--color);
+            padding: 0.25rem 0.5rem;
+        }
+
+        td {
+            padding: 0.25rem 0.5rem;
+        }
+
+        img {
+            max-width: 100%;
+        }
+
+        #plot {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Does GPT4o use OCR for vision?</h1>
+    <p>12th July 2024</p>
+</header>
+<hr>
+
+<p>
+    This is a small silly experiment in reaction to a few comments like these:
+</p>
+
+<blockquote cite="https://www.oranlooney.com/post/gpt-cnn#optical-character-recognition">
+    I think OpenAI is running an off-the-shelf OCR tool like Tesseract (or more likely some proprietary,
+    state-of-the-art tool) and feeding the identified text into the transformer alongside the image data.
+    <cite><a href="https://www.oranlooney.com/post/gpt-cnn#optical-character-recognition">Oran Looney</a></cite>
+</blockquote>
+
+<blockquote cite="https://news.ycombinator.com/item?id=40929289">
+    I've been generally frustrated at the lack of analysis of vision LLMs generally.
+    <cite><a href="https://news.ycombinator.com/item?id=40929289">simonw</a></cite>
+</blockquote>
+
+<p><b>Hypothesis</b>: GPT4o uses OCR to augment its vision capabilities.</p>
+
+<p>The idea to verify this goes like this:</p>
+
+<ul>
+    <li>The computational effort of LLMs scales with sequence length</li>
+    <li>An increase in response time proportional to text length should be observable</li>
+    <li>Images of the same size require equal processing</li>
+    <li>Requests with images that have the same dimensions but contain different amounts of text should be equally
+        fast
+    </li>
+    <li>However, if text was OCRed and fed to GPT in addition to the image, there should again be an observable
+        difference proportional to a text-only prompt
+    </li>
+</ul>
+
+<p>
+    <b>TLDR</b>: There is no conclusive evidence. The results raise more questions than they answer.
+</p>
+
+<h2>The Setup</h2>
+
+<p>
+    This experiment examines gpt-4o-2024-05-13.
+</p>
+
+<h3>Dataset</h3>
+
+<p>I generated a small synthetic dataset. You can find it <a>here</a>.</p>
+
+<ul>
+    <li>Steps of a hundred from 0 to 1000</li>
+    <li>Each step contains 10 samples</li>
+    <li>Each sample has a 1024 x 1024 image</li>
+    <li>Each image was filled with a random set of english words</li>
+    <li>The amount of words is equal to the step size</li>
+    <li>The text is separately available in a text file</li>
+</ul>
+
+<p>This is an example with 1000 words:</p>
+
+<img src="data/img/1000/0.png">
+
+<p>Note, that I created a grid pattern for the background because I initially suspected, that blank parts of images are
+    cropped. More on this later.</p>
+
+<h3>Prompt</h3>
+
+<p>Each sample was measured twice. The code is <a>here</a>.</p>
+
+<ul>
+    <li><b>Vision-based</b>: Only given the image and this prompt
+        <pre>
+Count the amount of words in the image. Only respond with the total number, don't say anything else.
+        </pre>
+    </li>
+    <li><b>Text-based</b>: Given this prompt, where <code>${TEXT}</code> was replaced with the actual text
+        <pre>
+Count the amount of words in the following text, only respond with the total number, don't say anything else:\n\n```${TEXT}```
+        </pre>
+    </li>
+</ul>
+
+<p>
+    The task of counting was there for the possibility that there is some kind of detection, whether OCR is required.
+    The outcomes weren't important.
+</p>
+
+<h2>The Result</h2>
+
+<p>
+    The following plot visualizes the measured response times.
+    The raw data is <a>here</a>.
+    The plot shows the step size on the X axis.
+    At most, an image or text prompt contained 1000 words to count.
+    The Y axis shows the total measured time of an API request using Python's <code>requests</code>.
+    The two lines are linear regressions of the two groups.
+    You can hide individual plots by clicking their labels.
+</p>
+
+<div id="plot"></div>
+
+<p>
+    Some Observations:
+</p>
+
+<ul>
+    <li>This is contrary to the expected result:
+        <ul>
+            <li>
+                The text-based requests don't show any significant increase. The texts were probably too short.
+            </li>
+            <li>
+                The image-based requests show a significant increase. Approximately 0.7 ms for each additional
+                word, totaling 700 ms between 0 and 1000 words. This was reproducible over multiple runs.
+            </li>
+            <li>
+                We expected there to be an increase for the images, but only proportional to the text-only prompts.
+            </li>
+            <li>
+                Since there is no increase for the text-only prompts, this must emerge from something different.
+            </li>
+        </ul>
+    </li>
+    <li>The variance of requests with images seems much higher.</li>
+    <li>Image-based requests have a fixed cost of ~2 seconds, for text-based requests this is only 600 ms.</li>
+</ul>
+
+<p>
+    The experiment is of course far from perfect.
+    The sample size should be bigger.
+    The step size should be larger.
+    The regression seems questionable.
+</p>
+
+<p>
+    The whole experiment was ~1 € in API costs.
+    Feel free to redo it better yourself.
+</p>
+
+<h2>Conclusion</h2>
+
+<p>
+    The experiment neither confirms nor denies the original question.
+    It raises a different question, however:
+</p>
+
+<p>
+    Why do images with higher entropy have longer response times?
+</p>
+
+<p>
+    This fact isn't reflected in the pricing.
+    Each vision-based API request is billed with exactly 793 prompt tokens.
+    This number can be roughly reproduced:
+</p>
+
+<ul>
+    <li>Each 512 x 512 image patch constitutes 170 tokens <a href="#1">[1]</a>
+    </li>
+    <li>All images are 1024 x 1024, so 4 patches, meaning 4 * 170 = 680 tokens</li>
+    <li>The text prompt has 22 tokens <a href="#2">[2]</a></li>
+    <li>Missing 793 - 680 - 22 = 91 tokens. Maybe control tokens or some default system prompt.</li>
+</ul>
+
+<p>
+    The bottom line is, that the number is equal for all requests.
+</p>
+
+<p>
+    My best guess to explain the difference in response time is, that GPT4's image component adapts computational effort
+    based on image complexity.
+    Maybe something diffusion-related?
+</p>
+
+<p>
+    Perhaps the computational cost is actually just lower if there is less information.
+</p>
+
+<p>
+    Since I have no idea about the inner workings of GPT, I'll be happy to be enlightened by someone who does.
+</p>
+
+<h2>Bonus: How accurate did GPT count?</h2>
+
+<p>
+    Here are some statistics if you wondered how accurately GPT counted.
+    The header shows the true amount of words for each step.
+    Each body row shows a single statistic over the 10 samples for each step.
+</p>
+
+<h4>Text-based Counting</h4>
+
+<table>
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>0</th>
+        <th>100</th>
+        <th>200</th>
+        <th>300</th>
+        <th>400</th>
+        <th>500</th>
+        <th>600</th>
+        <th>700</th>
+        <th>800</th>
+        <th>900</th>
+        <th>1000</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>Best</td>
+        <td>0</td>
+        <td>100</td>
+        <td>200</td>
+        <td>304</td>
+        <td>400</td>
+        <td>500</td>
+        <td>635</td>
+        <td>673</td>
+        <td>749</td>
+        <td>929</td>
+        <td>1000</td>
+    </tr>
+    <tr>
+        <td>Avg</td>
+        <td>0</td>
+        <td>113</td>
+        <td>220</td>
+        <td>387</td>
+        <td>531</td>
+        <td>627</td>
+        <td>794</td>
+        <td>848</td>
+        <td>912</td>
+        <td>975</td>
+        <td>1017</td>
+    </tr>
+    <tr>
+        <td>Min</td>
+        <td>0</td>
+        <td>100</td>
+        <td>185</td>
+        <td>250</td>
+        <td>400</td>
+        <td>464</td>
+        <td>505</td>
+        <td>604</td>
+        <td>622</td>
+        <td>600</td>
+        <td>800</td>
+    </tr>
+    <tr>
+        <td>Max</td>
+        <td>0</td>
+        <td>167</td>
+        <td>272</td>
+        <td>500</td>
+        <td>765</td>
+        <td>1000</td>
+        <td>1024</td>
+        <td>1000</td>
+        <td>1107</td>
+        <td>1734</td>
+        <td>1370</td>
+    </tr>
+    <tr>
+        <td>Std</td>
+        <td>0</td>
+        <td>19</td>
+        <td>31</td>
+        <td>84</td>
+        <td>92</td>
+        <td>153</td>
+        <td>170</td>
+        <td>136</td>
+        <td>147</td>
+        <td>292</td>
+        <td>137</td>
+    </tr>
+    </tbody>
+</table>
+
+<h4>Image-based Counting</h4>
+<table>
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>0</th>
+        <th>100</th>
+        <th>200</th>
+        <th>300</th>
+        <th>400</th>
+        <th>500</th>
+        <th>600</th>
+        <th>700</th>
+        <th>800</th>
+        <th>900</th>
+        <th>1000</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>Best</td>
+        <td>0</td>
+        <td>150</td>
+        <td>274</td>
+        <td>486</td>
+        <td>488</td>
+        <td>435</td>
+        <td>908</td>
+        <td>665</td>
+        <td>789</td>
+        <td>906</td>
+        <td>1000</td>
+    </tr>
+    <tr>
+        <td>Avg</td>
+        <td>0</td>
+        <td>221</td>
+        <td>460</td>
+        <td>654</td>
+        <td>751</td>
+        <td>801</td>
+        <td>1006</td>
+        <td>900</td>
+        <td>1191</td>
+        <td>1076</td>
+        <td>2158</td>
+    </tr>
+    <tr>
+        <td>Min</td>
+        <td>0</td>
+        <td>150</td>
+        <td>274</td>
+        <td>486</td>
+        <td>488</td>
+        <td>435</td>
+        <td>908</td>
+        <td>335</td>
+        <td>772</td>
+        <td>906</td>
+        <td>564</td>
+    </tr>
+    <tr>
+        <td>Max</td>
+        <td>0</td>
+        <td>300</td>
+        <td>601</td>
+        <td>933</td>
+        <td>1160</td>
+        <td>1040</td>
+        <td>1160</td>
+        <td>1507</td>
+        <td>1996</td>
+        <td>1452</td>
+        <td>13306</td>
+    </tr>
+    <tr>
+        <td>Std</td>
+        <td>0</td>
+        <td>42</td>
+        <td>103</td>
+        <td>147</td>
+        <td>249</td>
+        <td>176</td>
+        <td>68</td>
+        <td>350</td>
+        <td>377</td>
+        <td>157</td>
+        <td>3722</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+<h2>References</h2>
+<ol>
+    <li id="1"><a href="https://platform.openai.com/docs/guides/vision/low-or-high-fidelity-image-understanding">https://platform.openai.com/docs/guides/vision/low-or-high-fidelity-image-understanding</a>
+        (2024-07-12)
+    </li>
+    <li id="2"><a href="https://platform.openai.com/tokenizer">https://platform.openai.com/tokenizer</a> (2024-07-12)
+    </li>
+</ol>
+
+<script>
+    function linearRegression(x, y) {
+        const n = x.length;
+        const x_mean = x.reduce((a, b) => a + b) / n;
+        const y_mean = y.reduce((a, b) => a + b) / n;
+        let num = 0;
+        let den = 0;
+        for (let i = 0; i < n; i++) {
+            num += (x[i] - x_mean) * (y[i] - y_mean);
+            den += (x[i] - x_mean) ** 2;
+        }
+        const slope = num / den;
+        const intercept = y_mean - slope * x_mean;
+        return { slope, intercept };
+    }
+
+    function plot_dataset(x, y, label, color) {
+        const scatterTrace = {
+            x: x,
+            y: y,
+            name: label,
+            mode: "markers",
+            type: "scatter",
+            marker: { color: color, opacity: 0.6 }
+        };
+
+        // Perform regression using Plotly"s built-in method
+        const { slope, intercept } = linearRegression(x, y);
+        const regressionTrace = {
+            x: x,
+            y: x.map(x => slope * x + intercept),
+            name: slope.toFixed(5) + " * x + " + intercept.toFixed(5),
+            mode: "lines",
+            type: "scatter",
+            line: { color: color }
+        };
+
+        return [scatterTrace, regressionTrace];
+    }
+
+    const x_words = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 700, 700, 700, 700, 700, 700, 700, 700, 700, 700, 800, 800, 800, 800, 800, 800, 800, 800, 800, 800, 900, 900, 900, 900, 900, 900, 900, 900, 900, 900, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000];
+    const y_img_duration = [1166, 1797, 2297, 1370, 1191, 1430, 2145, 1321, 1847, 2362, 1943, 2146, 3000, 2351, 2145, 1943, 1845, 1841, 2353, 1743, 2048, 1970, 3081, 2654, 2561, 3111, 2099, 3067, 2147, 1864, 3174, 2666, 2345, 2451, 1946, 2969, 2546, 2042, 2761, 2357, 1697, 4013, 1702, 3171, 2354, 2760, 2275, 2560, 2183, 2408, 2657, 2328, 2545, 3837, 2941, 2172, 2462, 2246, 2151, 2354, 2969, 2246, 3287, 2964, 2342, 2487, 3271, 2545, 2348, 3070, 2862, 3168, 2644, 1945, 3260, 2062, 2033, 3012, 2603, 2673, 3274, 2758, 3329, 2244, 2799, 2781, 2861, 4240, 2351, 2350, 2860, 2760, 2570, 1734, 1940, 3046, 3376, 3297, 2767, 3278, 2455, 3180, 2942, 3372, 2453, 2452, 2657, 2762, 2352, 3472];
+    const y_txt_duration = [809, 506, 526, 715, 801, 625, 463, 513, 621, 559, 613, 612, 517, 471, 850, 919, 363, 404, 614, 585, 598, 728, 912, 608, 713, 510, 607, 514, 505, 519, 514, 508, 1097, 972, 662, 507, 1161, 612, 498, 576, 1125, 507, 558, 507, 510, 417, 514, 601, 816, 609, 610, 719, 1360, 718, 709, 815, 608, 1255, 484, 613, 612, 613, 517, 610, 616, 507, 616, 816, 612, 711, 917, 510, 606, 710, 511, 814, 508, 714, 509, 619, 506, 712, 886, 917, 715, 1024, 712, 711, 922, 609, 712, 1328, 659, 617, 714, 615, 613, 1018, 615, 712, 612, 726, 642, 616, 634, 683, 601, 616, 510, 716];
+
+    const plots = [
+        ...plot_dataset(x_words, y_img_duration, "Image-based", "coral"),
+        ...plot_dataset(x_words, y_txt_duration, "Text-based", "cornflowerblue")
+    ]
+
+    const bg_color = window.matchMedia("(prefers-color-scheme: dark)").matches ? "#dfdedc" : "#fff";
+    const layout = {
+        plot_bgcolor: bg_color,
+        paper_bgcolor: bg_color,
+        margin: {
+            l: 55,
+            r: 0,
+            b: 40,
+            t: 0,
+            pad: 0
+        },
+        xaxis: { title: "Words to Count" },
+        yaxis: { title: "Duration in Milliseconds" },
+        legend: {
+            x: 0.06,
+            y: 1,
+            xanchor: "left",
+            yanchor: "top"
+        },
+        showlegend: true
+    };
+
+    Plotly.newPlot("plot", plots, layout);
+</script>
+</body>
+</html>
